@@ -4,27 +4,83 @@ var $ = require('jquery');
 
 module.exports = function() { $(function() {
   try {
-    window; requestAnimationFrame; cancelAnimationFrame; document.body;
+    window; requestAnimationFrame; cancelAnimationFrame;
     var elem = document.createElement('div');
+    elem.style.display = 'none';
     document.body.appendChild(elem); document.body.removeChild(elem);
+    elem = null;
   } catch (error) { return; }
+
+  // Globals
+  var $window = $(window)
+    , random = Math.random
+    , cos = Math.cos
+    , sin = Math.sin
+    , PI = Math.PI
+    , PI2 = PI * 2
+    , timer = undefined
+    , frame = undefined
+    , confetti = [];
 
   // Settings
   var konami = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]
     , pointer = 0;
 
-  var sizeMin = 6, sizeMax = 10 - sizeMin;
+  var particles = 150
+    , spread = 40
+    , sizeMin = 3, sizeMax = 12 - sizeMin;
 
   var colorRedMin   = 0, colorRedMax   = 255 - colorRedMin
     , colorGreenMin = 0, colorGreenMax = 255 - colorGreenMin
     , colorBlueMin  = 0, colorBlueMax  = 255 - colorBlueMin;
 
-  // Globals
-  var $window = $(window)
-    , random = Math.random
-    , timer = undefined
-    , frame = undefined
-    , confetti = [];
+  function interpolation(a, b, t) {
+    return (1-cos(PI*t))/2 * (b-a) + a;
+  }
+
+  // Create a 1D Maximal Poisson Disc over [0, 1]
+  var radius = .1;
+  function createSpline() {
+    // domain is the set of points which are still available to pick from
+    // D = union{ [d_i, d_i+1] | d is even }
+    var domain = [radius, 1-radius], measure = 1-radius-radius, spline = [0, 1];
+    while (measure) {
+      var dart = measure * random(), i, l, interval, a, b, c, d;
+
+      // Find where dart lies
+      for (i = 0, l = domain.length, measure = 0; i < l; i += 2) {
+        a = domain[i], b = domain[i+1], interval = b-a;
+        if (dart < measure+interval) {
+          spline.push(dart += a-measure);
+          break;
+        }
+        measure += interval;
+      }
+      c = dart-radius, d = dart+radius;
+
+      // Update the domain
+      for (i = domain.length-1; i > 0; i -= 2) {
+        l = i-1, a = domain[l], b = domain[i];
+        // c---d          c---d  Do nothing
+        //   c-----d  c-----d    Move interior
+        //   c--------------d    Delete interval
+        //         c--d          Split interval
+        //       a------b
+        if (a >= c && a < d)
+          if (b > d) domain[l] = d; // Move interior (Left case)
+          else domain.splice(l, 2); // Delete interval
+        else if (a < c && b > c)
+          if (b <= d) domain[i] = c; // Move interior (Right case)
+          else domain.splice(i, 0, c, d); // Split interval
+      }
+
+      // Re-measure the domain
+      for (i = 0, l = domain.length, measure = 0; i < l; i += 2)
+        measure += domain[i+1]-domain[i];
+    }
+
+    return spline.sort();
+  }
 
   // Create the overarching container
   var container = document.createElement('div');
@@ -34,9 +90,11 @@ module.exports = function() { $(function() {
   container.style.width    = '100%';
   container.style.height   = '0';
   container.style.overflow = 'visible';
+  container.style.zIndex   = '9999';
 
   // Confetto constructor
   function Confetto() {
+    this.frame = 0;
     this.outer = document.createElement('div');
     this.inner = document.createElement('div');
     this.outer.appendChild(this.inner);
@@ -55,21 +113,45 @@ module.exports = function() { $(function() {
     outerStyle.perspective = '50px';
     outerStyle.transform = 'rotate(' + (360 * random()|0) + 'deg)';
     this.axis = 'rotate3D(' +
-      Math.cos(360 * random()|0) + ',' +
-      Math.cos(360 * random()|0) + ',0,';
+      cos(360 * random()|0) + ',' +
+      cos(360 * random()|0) + ',0,';
     this.theta = 360 * random()|0;
     innerStyle.transform = this.axis + this.theta + 'deg)';
 
     this.x = $window.width() * random()|0;
-    this.y = 0;
+    this.y = -50;
+    this.dx = sin(-.12 + .24 * random()) / 1.2;
+    this.dy = .15 + .08 * random();
     outerStyle.left = this.x + 'px';
     outerStyle.top  = this.y + 'px';
+
+    // Create the periodic spline
+    this.splineX = createSpline();
+    this.splineY = [];
+    for (var i = 1, l = this.splineX.length-1; i < l; ++i)
+      this.splineY[i] = 100 * random();
+    this.splineY[0] = this.splineY[l] = 50 * random();
+
     this.update = function(height, delta) {
-      this.y += delta/4;
+      this.frame += delta;
+      this.x += this.dx * delta;
+      this.y += this.dy * delta;
       this.theta += delta/2;
-      outerStyle.top = this.y + 'px';
+
+      // Compute spline and convert to polar
+      var phi = this.frame % 7777 / 7777, i = 0, j = 1;
+      while (phi >= this.splineX[j]) i = j++;
+      var rho = interpolation(
+        this.splineY[i],
+        this.splineY[j],
+        (phi-this.splineX[i]) / (this.splineX[j]-this.splineX[i])
+      );
+      phi *= PI2;
+
+      outerStyle.left = this.x + rho * cos(phi) + 'px';
+      outerStyle.top  = this.y + rho * sin(phi) + 'px';
       innerStyle.transform = this.axis + this.theta + 'deg)';
-      return this.y > height;
+      return this.y > height+50;
     };
   }
 
@@ -80,13 +162,13 @@ module.exports = function() { $(function() {
 
       // Add confetti
       (function addConfetto(count) {
-        if (count > 100)
+        if (count > particles)
           return timer = undefined;
 
         var confetto = new Confetto();
         confetti.push(confetto);
         container.appendChild(confetto.outer);
-        timer = setTimeout(addConfetto.bind(null, count+1), 15);
+        timer = setTimeout(addConfetto.bind(null, count+1), spread * random());
       })(0);
 
       // Start the loop
@@ -96,11 +178,12 @@ module.exports = function() { $(function() {
         prev = timestamp;
         var height = $window.height();
 
-        for (var i = confetti.length-1; i >= 0; --i)
+        for (var i = confetti.length-1; i >= 0; --i) {
           if (confetti[i].update(height, delta)) {
             container.removeChild(confetti[i].outer);
             confetti.splice(i, 1);
           }
+        }
 
         if (timer || confetti.length)
           return frame = requestAnimationFrame(loop);
