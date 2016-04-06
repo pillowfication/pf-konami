@@ -1,0 +1,36 @@
+{
+  "name": "pf-konami",
+  "version": "1.0.0",
+  "description": "Konami code for confetti",
+  "author": {
+    "name": "Markus Tran",
+    "email": "thebluepillow@gmail.com",
+    "url": "http://pillowfication.com"
+  },
+  "homepage": "https://github.com/pillowfication/pf-konami",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pillowfication/pf-konami.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pillowfication/pf-konami/issues"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "browserify example/example.js -o example/bundle.js"
+  },
+  "dependencies": {
+    "jquery": "2.2.3",
+    "lodash": "4.8.2"
+  },
+  "devDependencies": {
+    "eslint": "^2.5.1",
+    "eslint-config-pf": "1.0.4"
+  },
+  "keywords": [
+    "confetti",
+    "konami",
+    "pillow"
+  ],
+  "license": "MIT"
+}
