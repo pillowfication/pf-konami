@@ -4,7 +4,7 @@ var $ = require('jquery');
 
 module.exports = function() { $(function() {
   try {
-    window; requestAnimationFrame; cancelAnimationFrame;
+    window; requestAnimationFrame; cancelAnimationFrame; setTimeout;
     var elem = document.createElement('div');
     elem.style.display = 'none';
     document.body.appendChild(elem); document.body.removeChild(elem);
@@ -32,23 +32,25 @@ module.exports = function() { $(function() {
 
   var colorThemes = [
     function() {
-      return color(256 * random()|0, 256 * random()|0, 256 * random()|0);
-    },
-    function() {
-      var black = 200 * random()|0;
-      return color(255, black, black);
-    },
-    function() {
-      var black = 200 * random()|0;
-      return color(black, 200, black);
-    },
-    function() {
-      var black = 200 * random()|0;
-      return color(black, black, 255);
-    },
-    function() {
-      var black = 256 * random()|0;
-      return color(black, black, black);
+      return color(200 * random()|0, 200 * random()|0, 200 * random()|0);
+    }, function() {
+      var black = 200 * random()|0; return color(200, black, black);
+    }, function() {
+      var black = 200 * random()|0; return color(black, 200, black);
+    }, function() {
+      var black = 200 * random()|0; return color(black, black, 200);
+    }, function() {
+      return color(200, 100, 200 * random()|0);
+    }, function() {
+      return color(200 * random()|0, 200, 200);
+    }, function() {
+      var black = 256 * random()|0; return color(black, black, black);
+    }, function() {
+      return colorThemes[random() < .5 ? 1 : 2]();
+    }, function() {
+      return colorThemes[random() < .5 ? 3 : 5]();
+    }, function() {
+      return colorThemes[random() < .5 ? 2 : 4]();
     }
   ];
   function color(r, g, b) {
@@ -60,11 +62,11 @@ module.exports = function() { $(function() {
   }
 
   // Create a 1D Maximal Poisson Disc over [0, 1]
-  var radius = .1;
+  var radius = .1, radius2 = radius+radius;
   function createSpline() {
     // domain is the set of points which are still available to pick from
     // D = union{ [d_i, d_i+1] | i is even }
-    var domain = [radius, 1-radius], measure = 1-radius-radius, spline = [0, 1];
+    var domain = [radius, 1-radius], measure = 1-radius2, spline = [0, 1];
     while (measure) {
       var dart = measure * random(), i, l, interval, a, b, c, d;
 
@@ -122,21 +124,22 @@ module.exports = function() { $(function() {
 
     var outerStyle = this.outer.style, innerStyle = this.inner.style;
     outerStyle.position = 'absolute';
-    outerStyle.width  = (sizeMin + sizeMax * random()|0) + 'px';
-    outerStyle.height = (sizeMin + sizeMax * random()|0) + 'px';
+    outerStyle.width  = (sizeMin + sizeMax * random()) + 'px';
+    outerStyle.height = (sizeMin + sizeMax * random()) + 'px';
     innerStyle.width  = '100%';
     innerStyle.height = '100%';
     innerStyle.backgroundColor = theme();
 
     outerStyle.perspective = '50px';
-    outerStyle.transform = 'rotate(' + (360 * random()|0) + 'deg)';
+    outerStyle.transform = 'rotate(' + (360 * random()) + 'deg)';
     this.axis = 'rotate3D(' +
-      cos(360 * random()|0) + ',' +
-      cos(360 * random()|0) + ',0,';
-    this.theta = 360 * random()|0;
+      cos(360 * random()) + ',' +
+      cos(360 * random()) + ',0,';
+    this.theta = 360 * random();
+    this.dTheta = .2 + .2 * random();
     innerStyle.transform = this.axis + this.theta + 'deg)';
 
-    this.x = $window.width() * random()|0;
+    this.x = $window.width() * random();
     this.y = -50;
     this.dx = sin(-.12 + .24 * random()) / 1.2;
     this.dy = .15 + .08 * random();
@@ -154,7 +157,7 @@ module.exports = function() { $(function() {
       this.frame += delta;
       this.x += this.dx * delta;
       this.y += this.dy * delta;
-      this.theta += delta/2;
+      this.theta += this.dTheta * delta;
 
       // Compute spline and convert to polar
       var phi = this.frame % 7777 / 7777, i = 0, j = 1;
