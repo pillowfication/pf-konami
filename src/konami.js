@@ -8,7 +8,7 @@ module.exports = function() { $(function() {
     var elem = document.createElement('div');
     elem.style.display = 'none';
     document.body.appendChild(elem); document.body.removeChild(elem);
-    elem = null;
+    elem = undefined;
   } catch (error) { return; }
 
   // Globals
@@ -30,9 +30,30 @@ module.exports = function() { $(function() {
     , spread = 40
     , sizeMin = 3, sizeMax = 12 - sizeMin;
 
-  var colorRedMin   = 0, colorRedMax   = 255 - colorRedMin
-    , colorGreenMin = 0, colorGreenMax = 255 - colorGreenMin
-    , colorBlueMin  = 0, colorBlueMax  = 255 - colorBlueMin;
+  var colorThemes = [
+    function() {
+      return color(256 * random()|0, 256 * random()|0, 256 * random()|0);
+    },
+    function() {
+      var black = 200 * random()|0;
+      return color(255, black, black);
+    },
+    function() {
+      var black = 200 * random()|0;
+      return color(black, 200, black);
+    },
+    function() {
+      var black = 200 * random()|0;
+      return color(black, black, 255);
+    },
+    function() {
+      var black = 256 * random()|0;
+      return color(black, black, black);
+    }
+  ];
+  function color(r, g, b) {
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
 
   function interpolation(a, b, t) {
     return (1-cos(PI*t))/2 * (b-a) + a;
@@ -42,7 +63,7 @@ module.exports = function() { $(function() {
   var radius = .1;
   function createSpline() {
     // domain is the set of points which are still available to pick from
-    // D = union{ [d_i, d_i+1] | d is even }
+    // D = union{ [d_i, d_i+1] | i is even }
     var domain = [radius, 1-radius], measure = 1-radius-radius, spline = [0, 1];
     while (measure) {
       var dart = measure * random(), i, l, interval, a, b, c, d;
@@ -93,7 +114,7 @@ module.exports = function() { $(function() {
   container.style.zIndex   = '9999';
 
   // Confetto constructor
-  function Confetto() {
+  function Confetto(theme) {
     this.frame = 0;
     this.outer = document.createElement('div');
     this.inner = document.createElement('div');
@@ -105,10 +126,7 @@ module.exports = function() { $(function() {
     outerStyle.height = (sizeMin + sizeMax * random()|0) + 'px';
     innerStyle.width  = '100%';
     innerStyle.height = '100%';
-    innerStyle.backgroundColor = 'rgb(' +
-      (colorRedMin   + colorRedMax   * random()|0) + ',' +
-      (colorGreenMin + colorGreenMax * random()|0) + ',' +
-      (colorBlueMin  + colorBlueMax  * random()|0) + ')';
+    innerStyle.backgroundColor = theme();
 
     outerStyle.perspective = '50px';
     outerStyle.transform = 'rotate(' + (360 * random()|0) + 'deg)';
@@ -161,11 +179,12 @@ module.exports = function() { $(function() {
       document.body.appendChild(container);
 
       // Add confetti
+      var theme = colorThemes[colorThemes.length * random()|0];
       (function addConfetto(count) {
         if (count > particles)
           return timer = undefined;
 
-        var confetto = new Confetto();
+        var confetto = new Confetto(theme);
         confetti.push(confetto);
         container.appendChild(confetto.outer);
         timer = setTimeout(addConfetto.bind(null, count+1), spread * random());

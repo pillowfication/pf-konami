@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "eslint": "^2.5.1",
-    "eslint-config-pf": "1.0.4"
+    "eslint-config-pf": "1.0.5"
   },
   "keywords": [
     "confetti",
