@@ -28,7 +28,16 @@ module.exports = function() { $(function() {
 
   var particles = 150
     , spread = 40
-    , sizeMin = 3, sizeMax = 12 - sizeMin;
+    , sizeMin = 3
+    , sizeMax = 12 - sizeMin
+    , eccentricity = 10
+    , deviation = 100
+    , dxThetaMin = -.1
+    , dxThetaMax = -dxThetaMin - dxThetaMin
+    , dyMin = .13
+    , dyMax = .18
+    , dThetaMin = .4
+    , dThetaMax = .7 - dThetaMin;
 
   var colorThemes = [
     function() {
@@ -57,13 +66,14 @@ module.exports = function() { $(function() {
     return 'rgb(' + r + ',' + g + ',' + b + ')';
   }
 
+  // Cosine interpolation
   function interpolation(a, b, t) {
     return (1-cos(PI*t))/2 * (b-a) + a;
   }
 
   // Create a 1D Maximal Poisson Disc over [0, 1]
-  var radius = .1, radius2 = radius+radius;
-  function createSpline() {
+  var radius = 1/eccentricity, radius2 = radius+radius;
+  function createPoisson() {
     // domain is the set of points which are still available to pick from
     // D = union{ [d_i, d_i+1] | i is even }
     var domain = [radius, 1-radius], measure = 1-radius2, spline = [0, 1];
@@ -136,22 +146,22 @@ module.exports = function() { $(function() {
       cos(360 * random()) + ',' +
       cos(360 * random()) + ',0,';
     this.theta = 360 * random();
-    this.dTheta = .2 + .2 * random();
+    this.dTheta = dThetaMin + dThetaMax * random();
     innerStyle.transform = this.axis + this.theta + 'deg)';
 
     this.x = $window.width() * random();
-    this.y = -50;
-    this.dx = sin(-.12 + .24 * random()) / 1.2;
-    this.dy = .15 + .08 * random();
+    this.y = -deviation;
+    this.dx = sin(dxThetaMin + dxThetaMax * random());
+    this.dy = dyMin + dyMax * random();
     outerStyle.left = this.x + 'px';
     outerStyle.top  = this.y + 'px';
 
     // Create the periodic spline
-    this.splineX = createSpline();
+    this.splineX = createPoisson();
     this.splineY = [];
     for (var i = 1, l = this.splineX.length-1; i < l; ++i)
-      this.splineY[i] = 100 * random();
-    this.splineY[0] = this.splineY[l] = 50 * random();
+      this.splineY[i] = deviation * random();
+    this.splineY[0] = this.splineY[l] = deviation * random();
 
     this.update = function(height, delta) {
       this.frame += delta;
@@ -172,7 +182,7 @@ module.exports = function() { $(function() {
       outerStyle.left = this.x + rho * cos(phi) + 'px';
       outerStyle.top  = this.y + rho * sin(phi) + 'px';
       innerStyle.transform = this.axis + this.theta + 'deg)';
-      return this.y > height+50;
+      return this.y > height+deviation;
     };
   }
 
@@ -182,15 +192,16 @@ module.exports = function() { $(function() {
       document.body.appendChild(container);
 
       // Add confetti
-      var theme = colorThemes[colorThemes.length * random()|0];
-      (function addConfetto(count) {
-        if (count > particles)
+      var theme = colorThemes[colorThemes.length * random()|0]
+        , count = 0;
+      (function addConfetto() {
+        if (++count > particles)
           return timer = undefined;
 
         var confetto = new Confetto(theme);
         confetti.push(confetto);
         container.appendChild(confetto.outer);
-        timer = setTimeout(addConfetto.bind(null, count+1), spread * random());
+        timer = setTimeout(addConfetto, spread * random());
       })(0);
 
       // Start the loop
