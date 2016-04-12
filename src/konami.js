@@ -2,7 +2,7 @@
 
 var $ = require('jquery');
 
-module.exports = function() { $(function() {
+$(function() {
   try {
     window; requestAnimationFrame; cancelAnimationFrame; setTimeout;
     var elem = document.createElement('div');
@@ -10,6 +10,9 @@ module.exports = function() { $(function() {
     document.body.appendChild(elem); document.body.removeChild(elem);
     elem = undefined;
   } catch (error) { return; }
+
+  if (window.pfKonami) return;
+  window.pfKonami = poof;
 
   // Globals
   var $window = $(window)
@@ -30,6 +33,7 @@ module.exports = function() { $(function() {
     , spread = 40
     , sizeMin = 3
     , sizeMax = 12 - sizeMin
+    , period = 7777
     , eccentricity = 10
     , deviation = 100
     , dxThetaMin = -.1
@@ -41,19 +45,19 @@ module.exports = function() { $(function() {
 
   var colorThemes = [
     function() {
-      return color(200 * random()|0, 200 * random()|0, 200 * random()|0);
+      return color(175 * random()|0, 175 * random()|0, 175 * random()|0);
     }, function() {
-      var black = 200 * random()|0; return color(200, black, black);
+      var black = 175 * random()|0; return color(175, black, black);
     }, function() {
-      var black = 200 * random()|0; return color(black, 200, black);
+      var black = 175 * random()|0; return color(black, 175, black);
     }, function() {
-      var black = 200 * random()|0; return color(black, black, 200);
+      var black = 175 * random()|0; return color(black, black, 175);
     }, function() {
-      return color(200, 100, 200 * random()|0);
+      return color(178, 89, 178 * random()|0);
     }, function() {
-      return color(200 * random()|0, 200, 200);
+      return color(178 * random()|0, 178, 178);
     }, function() {
-      var black = 256 * random()|0; return color(black, black, black);
+      var black = 200 * random()|0; return color(black, black, black);
     }, function() {
       return colorThemes[random() < .5 ? 1 : 2]();
     }, function() {
@@ -76,7 +80,7 @@ module.exports = function() { $(function() {
   function createPoisson() {
     // domain is the set of points which are still available to pick from
     // D = union{ [d_i, d_i+1] | i is even }
-    var domain = [radius, 1-radius], measure = 1-radius2, spline = [0, 1];
+    var domain = [radius, 1-radius], measure = 1-radius2, disc = [0, 1];
     while (measure) {
       var dart = measure * random(), i, l, interval, a, b, c, d;
 
@@ -84,7 +88,7 @@ module.exports = function() { $(function() {
       for (i = 0, l = domain.length, measure = 0; i < l; i += 2) {
         a = domain[i], b = domain[i+1], interval = b-a;
         if (dart < measure+interval) {
-          spline.push(dart += a-measure);
+          disc.push(dart += a-measure);
           break;
         }
         measure += interval;
@@ -112,7 +116,7 @@ module.exports = function() { $(function() {
         measure += domain[i+1]-domain[i];
     }
 
-    return spline.sort();
+    return disc.sort();
   }
 
   // Create the overarching container
@@ -120,8 +124,6 @@ module.exports = function() { $(function() {
   container.style.position = 'fixed';
   container.style.top      = '0';
   container.style.left     = '0';
-  container.style.width    = '100%';
-  container.style.height   = '0';
   container.style.overflow = 'visible';
   container.style.zIndex   = '9999';
 
@@ -143,8 +145,8 @@ module.exports = function() { $(function() {
     outerStyle.perspective = '50px';
     outerStyle.transform = 'rotate(' + (360 * random()) + 'deg)';
     this.axis = 'rotate3D(' +
-      cos(360 * random()) + ',' +
-      cos(360 * random()) + ',0,';
+      cos(PI * random()) + ',' +
+      cos(PI * random()) + ',0,';
     this.theta = 360 * random();
     this.dTheta = dThetaMin + dThetaMax * random();
     innerStyle.transform = this.axis + this.theta + 'deg)';
@@ -170,7 +172,7 @@ module.exports = function() { $(function() {
       this.theta += this.dTheta * delta;
 
       // Compute spline and convert to polar
-      var phi = this.frame % 7777 / 7777, i = 0, j = 1;
+      var phi = this.frame % period / period, i = 0, j = 1;
       while (phi >= this.splineX[j]) i = j++;
       var rho = interpolation(
         this.splineY[i],
@@ -187,6 +189,8 @@ module.exports = function() { $(function() {
   }
 
   function poof() {
+    'Markus was here. (https://www.npmjs.com/package/pf-konami)';
+
     if (!frame) {
       // Append the container
       document.body.appendChild(container);
@@ -229,12 +233,19 @@ module.exports = function() { $(function() {
   }
 
   $window.keydown(function(event) {
-    pointer = konami[pointer] === event.which
-      ? pointer+1
-      : +(event.which === konami[0]);
+    if (event.which === konami[pointer])
+      ++pointer;
+    else {
+      var curr = event.which, count = 1;
+      while (--pointer >= 0 && konami[pointer] === curr)
+        ++count;
+      pointer = 0;
+      while (--count >= 0 && konami[pointer] === curr)
+        ++pointer;
+    }
     if (pointer === konami.length) {
       pointer = 0;
       poof();
     }
   });
-}); };
+});
