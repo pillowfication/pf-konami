@@ -28,22 +28,84 @@ $(function() {
     , confetti = [];
 
   // Settings
-  var konami = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65]
-    , pointer = 0;
+  var konami = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65];
 
-  var particles = 150
-    , spread = 40
-    , sizeMin = 3
-    , sizeMax = 12 - sizeMin
-    , period = 7777
-    , eccentricity = 10
-    , deviation = 100
-    , dxThetaMin = -.1
-    , dxThetaMax = -dxThetaMin - dxThetaMin
-    , dyMin = .13
-    , dyMax = .18
-    , dThetaMin = .4
-    , dThetaMax = .7 - dThetaMin;
+  var particles = 150                       // How many confetti will spawn in each poof
+    , spread = 40                           // Maximum length of time between spawning sequential confetti (in ms)
+    , sizeMin = 3                           // Minimum width/height of each confetto (in px)
+    , sizeMax = 12 - sizeMin                // Maximum width/height of each confetto (in px)
+    , period = 7777                         // Time taken for a confetto to complete its spline (in ms)
+    , eccentricity = 10                     // Overall "jaggedness" of the spline
+    , deviation = 100                       // Maximum radius a confetto can be from its fixed point (in px)
+    , dxThetaMin = -.1                      // Minimum ∂x of a fixed-point-path is `sin(dxThetaMin)` (in px/ms)
+    , dxThetaMax = -dxThetaMin - dxThetaMin // Maximum ∂x of a fixed-point-path is `sin(dxThetaMax)` (in px/ms)
+    , dyMin = .13                           // Minimum ∂y of a fixed-point-path (in px/ms)
+    , dyMax = .18                           // Maximum ∂y of a fixed-point-path (in px/ms)
+    , dThetaMin = .4                        // Minimum speed a confetto will spin (in rad/ms)
+    , dThetaMax = .7 - dThetaMin;           // Maximum speed a confetto will spin (in rad/ms)
+
+  // Confetto animation explanation:
+  // Each confetto is given a period spline, with X values in [0, 1] and Y
+  // values in [0, 1].
+  //
+  // To generate a random spline, first a bunch of X values are selected from
+  // [0, 1]. To avoid steep slopes in the spline, the X values cannot be closer
+  // than `1/eccentricity` from each other. (Compute a 1D Maximal Poisson Disc).
+  // It will also be important that X=0 and X=1 are included in the sampling.
+  //
+  // 1 ^
+  //   |
+  //   |
+  //   |
+  // 0 x---x--x----x---x--x---x---x--x--x
+  //   0                                1
+  //
+  // For each point, we assign a random value from [0, 1]. This gives us each
+  // knot on the spline. It is also important that the Y value at X=0 matches
+  // the Y value at X=1.
+  //
+  // 1 ^               x
+  //   |      x           x   x
+  //   x           x                    x
+  //   |   x                      x  x
+  // 0 x---x--x----x---x--x---x---x--x--x
+  //   0                                1
+  //
+  // Now the points are connected using cosine interpolation.
+  //
+  // 1 ^                __
+  //   |       ,--,   /   '''---_
+  //   |     /     ''            \     __
+  //   |'---'                     -__'
+  // 0 +-------------------------------->
+  //   0                                1
+  //
+  // Since f(0) = f(1) (and f'(0) = f'(1)) this spline can be repeated
+  // indefinitely
+  //
+  // 1 ^                __                               __
+  //   |       ,--,   /   '''---_               ,--,   /   '''---_
+  //   |     /     ''            \     __     /     ''            \     __
+  //   |'---'                     -__'   '---'                     -__'
+  // 0 +----------------------------------------------------------------->
+  //   0                                1                                2
+  //
+  // If we interpret the X axis as an angle θ and the Y axis as a radius ρ,
+  // where ρ is bounded by [0, deviation], the spline now represents a
+  // "circular" curve around a fixed point
+  //
+  // ρ ^                __                             __
+  //   |       ,--,   /   '''---_                     |  '''.__
+  //   |     /     ''            \     __   Becomes    ',   +   '-_
+  //   |'---'                     -__'                   \        ,'
+  // 0 +-------------------------------->                 '-__--'
+  //   0                               2π
+  //
+  // When a confetto is spawned, a straight line path is created for this
+  // "fixed point" to follow. This line is created parametrically by randomly
+  // selecting its ∂x and ∂y randomly (∂x sampling will also be cosine-
+  // weighted). As the fixed point moves along the line, the confetto moves
+  // around the circular-spline-path around the fixed point.
 
   var colorThemes = [
     function() {
@@ -234,6 +296,8 @@ $(function() {
     }
   }
 
+  // Track keypresses
+  var pointer = 0;
   $window.keydown(function(event) {
     if (event.which === konami[pointer])
       ++pointer;
