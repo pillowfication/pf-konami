@@ -16,15 +16,9 @@
     "url": "https://github.com/pillowfication/pf-konami/issues"
   },
   "main": "index.js",
-  "scripts": {
-    "build": "browserify example/example.js -o example/bundle.js"
-  },
-  "dependencies": {
-    "jquery": "2.2.3"
-  },
   "devDependencies": {
-    "eslint": "^2.5.1",
-    "eslint-config-pf": "1.0.5"
+    "eslint": "^3.9.1",
+    "eslint-config-pf": "1.0.6"
   },
   "keywords": [
     "confetti",

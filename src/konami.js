@@ -1,24 +1,29 @@
+(function() {
 'use strict';
 
-if (typeof window === 'undefined') return;
+// Don't do anything if `window` or `document` is undefined. This occurs when
+// trying to sneak this module through a smaller module whose testing framework
+// doesn't use PhantomJS or something similar.
+if (typeof window === 'undefined' || typeof document === 'undefined')
+  return;
 
-var $ = require('jquery');
-
-$(function() {
+document.addEventListener('DOMContentLoaded', function() {
   try {
-    window; requestAnimationFrame; cancelAnimationFrame; setTimeout;
-    var elem = document.createElement('div');
-    elem.style.display = 'none';
-    document.body.appendChild(elem); document.body.removeChild(elem);
-    elem = undefined;
-  } catch (error) { return; }
+    // Assert these things are available and keep failure silent
+    requestAnimationFrame;
+    cancelAnimationFrame;
+    setTimeout;
+  } catch (error) {
+    return;
+  }
 
-  if (window.pfKonami) return;
+  // Only initialize once
+  if (window.pfKonami)
+    return;
   window.pfKonami = poof;
 
   // Globals
-  var $window = $(window)
-    , random = Math.random
+  var random = Math.random
     , cos = Math.cos
     , sin = Math.sin
     , PI = Math.PI
@@ -27,9 +32,11 @@ $(function() {
     , frame = undefined
     , confetti = [];
 
-  // Settings
+  // Trigger Sequence
+  // (up, up, down, down, left, right, left, right, B, A)
   var konami = [38, 38, 40, 40, 37, 39, 37, 39, 66, 65];
 
+  // Settings
   var particles = 150                       // How many confetti will spawn in each poof
     , spread = 40                           // Maximum length of time between spawning sequential confetti (in ms)
     , sizeMin = 3                           // Minimum width/height of each confetto (in px)
@@ -45,7 +52,7 @@ $(function() {
     , dThetaMax = .7 - dThetaMin;           // Maximum speed a confetto will spin (in rad/ms)
 
   // Confetto animation explanation:
-  // Each confetto is given a period spline, with X values in [0, 1] and Y
+  // Each confetto is given a periodic spline, with X values in [0, 1] and Y
   // values in [0, 1].
   //
   // To generate a random spline, first a bunch of X values are selected from
@@ -81,7 +88,7 @@ $(function() {
   //   0                                1
   //
   // Since f(0) = f(1) (and f'(0) = f'(1)) this spline can be repeated
-  // indefinitely
+  // indefinitely.
   //
   // 1 ^                __                               __
   //   |       ,--,   /   '''---_               ,--,   /   '''---_
@@ -92,7 +99,7 @@ $(function() {
   //
   // If we interpret the X axis as an angle θ and the Y axis as a radius ρ,
   // where ρ is bounded by [0, deviation], the spline now represents a
-  // "circular" curve around a fixed point
+  // "circular" curve around a fixed point.
   //
   // ρ ^                __                             __
   //   |       ,--,   /   '''---_                     |  '''.__
@@ -107,6 +114,7 @@ $(function() {
   // weighted). As the fixed point moves along the line, the confetto moves
   // around the circular-spline-path around the fixed point.
 
+  // Color Settings
   var colorThemes = [
     function() {
       return color(175 * random()|0, 175 * random()|0, 175 * random()|0);
@@ -162,17 +170,18 @@ $(function() {
       // Update the domain
       for (i = domain.length-1; i > 0; i -= 2) {
         l = i-1, a = domain[l], b = domain[i];
-        // c---d          c---d  Do nothing
-        //   c-----d  c-----d    Move interior
-        //   c--------------d    Delete interval
-        //         c--d          Split interval
-        //       a------b
+
+        // a---b          a---b  Do nothing
+        //   a-----b  a-----b    Move interior
+        //   a--------------b    Split interval
+        //         a--b          Delete interval
+        //       c------d
         if (a >= c && a < d)
-          if (b > d) domain[l] = d; // Move interior (Left case)
-          else domain.splice(l, 2); // Delete interval
+          if (b > d)   domain[l] = d;             // Move interior (Right case)
+          else         domain.splice(l, 2);       // Delete interval
         else if (a < c && b > c)
-          if (b <= d) domain[i] = c; // Move interior (Right case)
-          else domain.splice(i, 0, c, d); // Split interval
+          if (b <= d)  domain[i] = c;             // Move interior (Left case)
+          else         domain.splice(i, 0, c, d); // Split interval
       }
 
       // Re-measure the domain
@@ -193,11 +202,13 @@ $(function() {
 
   // Confetto constructor
   function Confetto(theme) {
+    // Create the inner and outer containers
     this.frame = 0;
     this.outer = document.createElement('div');
     this.inner = document.createElement('div');
     this.outer.appendChild(this.inner);
 
+    // Initialize the size and color
     var outerStyle = this.outer.style, innerStyle = this.inner.style;
     outerStyle.position = 'absolute';
     outerStyle.width  = (sizeMin + sizeMax * random()) + 'px';
@@ -206,6 +217,7 @@ $(function() {
     innerStyle.height = '100%';
     innerStyle.backgroundColor = theme();
 
+    // Initialize the axis of rotation
     outerStyle.perspective = '50px';
     outerStyle.transform = 'rotate(' + (360 * random()) + 'deg)';
     this.axis = 'rotate3D(' +
@@ -215,14 +227,15 @@ $(function() {
     this.dTheta = dThetaMin + dThetaMax * random();
     innerStyle.transform = this.axis + this.theta + 'deg)';
 
-    this.x = $window.width() * random();
+    // Initialize the fixed-point position
+    this.x = window.innerWidth * random();
     this.y = -deviation;
     this.dx = sin(dxThetaMin + dxThetaMax * random());
     this.dy = dyMin + dyMax * random();
     outerStyle.left = this.x + 'px';
     outerStyle.top  = this.y + 'px';
 
-    // Create the periodic spline
+    // Initialize the periodic spline
     this.splineX = createPoisson();
     this.splineY = [];
     for (var i = 1, l = this.splineX.length-1; i < l; ++i)
@@ -230,6 +243,7 @@ $(function() {
     this.splineY[0] = this.splineY[l] = deviation * random();
 
     this.update = function(height, delta) {
+      // Updated fixed point position
       this.frame += delta;
       this.x += this.dx * delta;
       this.y += this.dy * delta;
@@ -245,10 +259,13 @@ $(function() {
       );
       phi *= PI2;
 
+      // Update the absolute position based on the fixed-point and spline
       outerStyle.left = this.x + rho * cos(phi) + 'px';
       outerStyle.top  = this.y + rho * sin(phi) + 'px';
       innerStyle.transform = this.axis + this.theta + 'deg)';
-      return this.y > height+deviation;
+
+      // Return `false` if confetto is offscreen
+      return this.y > height;
     };
   }
 
@@ -277,15 +294,17 @@ $(function() {
       requestAnimationFrame(function loop(timestamp) {
         var delta = prev ? timestamp - prev : 0;
         prev = timestamp;
-        var height = $window.height();
+        var height = window.innerHeight;
 
+        // Update each confetto
         for (var i = confetti.length-1; i >= 0; --i) {
-          if (confetti[i].update(height, delta)) {
+          if (confetti[i].update(height+deviation, delta)) {
             container.removeChild(confetti[i].outer);
             confetti.splice(i, 1);
           }
         }
 
+        // While there are confetti to draw, keep looping
         if (timer || confetti.length)
           return frame = requestAnimationFrame(loop);
 
@@ -298,11 +317,12 @@ $(function() {
 
   // Track keypresses
   var pointer = 0;
-  $window.keydown(function(event) {
-    if (event.which === konami[pointer])
+  window.addEventListener('keydown', function(event) {
+    var key = event.which || event.keyCode || 0;
+    if (key === konami[pointer])
       ++pointer;
     else {
-      var curr = event.which, count = 1;
+      var curr = key, count = 1;
       while (--pointer >= 0 && konami[pointer] === curr)
         ++count;
       pointer = 0;
@@ -313,5 +333,7 @@ $(function() {
       pointer = 0;
       poof();
     }
-  });
+  }, true);
 });
+
+})();

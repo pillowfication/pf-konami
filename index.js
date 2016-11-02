@@ -1,3 +1,9 @@
 'use strict';
 
-module.exports = require('./src/konami');
+require('./src/konami');
+
+module.exports = function poof() {
+  typeof window !== 'undefined' &&
+  window.pfKonami &&
+  window.pfKonami();
+};
