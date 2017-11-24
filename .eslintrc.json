@@ -1,7 +1,0 @@
-{
-  "extends": "pf",
-  "env": {
-    "browser": true,
-    "node": true
-  }
-}

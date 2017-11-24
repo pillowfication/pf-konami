@@ -16,9 +16,11 @@
     "url": "https://github.com/pillowfication/pf-konami/issues"
   },
   "main": "index.js",
+  "scripts": {
+    "test": "node_modules/standard/bin/cmd.js"
+  },
   "devDependencies": {
-    "eslint": "^3.9.1",
-    "eslint-config-pf": "1.0.6"
+    "standard": "^10.0.3"
   },
   "keywords": [
     "confetti",
