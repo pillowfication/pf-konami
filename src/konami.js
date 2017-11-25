@@ -298,7 +298,7 @@
     }
 
     function poof () {
-      'Markus was here. (https://www.npmjs.com/package/pf-konami)'
+      'Markus was here. (http://pf-n.co/github/pf-konami)'
 
       if (!frame) {
         // Append the container

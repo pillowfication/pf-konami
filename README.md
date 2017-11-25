@@ -2,4 +2,4 @@
 
 ### (ﾉ◕ヮ◕)ﾉ*:･ﾟ✧
 
-http://pillowfication.com/github/pf-konami
+http://pf-n.co/github/pf-konami
